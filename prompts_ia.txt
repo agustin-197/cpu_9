@@ -1,0 +1,2 @@
+Con link_script.ld abierto, en el chat pido al agente:
+- Necesito un guion de linker minimo para riscv rv32i con una unica memoria ram de 512x32 bit ubicada en la base 0

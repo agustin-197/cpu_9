@@ -1,0 +1,80 @@
+@startuml
+title Diagrama de Estados - Control de CPU (FSM)
+hide empty description
+skinparam state {
+  BackgroundColor<<Fetch>> LightBlue
+  BackgroundColor<<Execute>> LightGreen
+  BackgroundColor<<Memory>> LightSalmon
+  BackgroundColor<<WriteBack>> LightYellow
+}
+
+' Definicion de Estados
+state "INICIO" as INICIO
+state "Ciclo de Búsqueda (Fetch)" as FETCH <<Fetch>> {
+    state "LEE_MEM_PC" as S1
+    state "CARGA_IR" as S2
+    state "DECODIFICA" as S3
+}
+
+' Ramas de Ejecución
+state "EJECUTA_R" as R_TYPE <<Execute>>
+state "EJECUTA_I" as I_TYPE <<Execute>>
+state "EJECUTA_U" as U_TYPE <<Execute>>
+state "BRANCH_EVAL" as B_TYPE <<Execute>>
+
+' Secuencia LOAD
+state "Secuencia LOAD" as LOAD_SEQ <<Memory>> {
+    state "LEE_MEM_DAT\nINC_PC" as L1
+    state "CARGA_RD\nDE_MEM" as L2
+}
+
+' Secuencia STORE
+state "Secuencia STORE" as STORE_SEQ <<Memory>> {
+    state "CALC_DIR\nSTORE" as ST1
+    state "ESCRIBE_MEM" as ST2
+    state "STORE_UPDATE" as ST3
+}
+
+' Secuencia JUMP
+state "Secuencia JUMP" as JUMP_SEQ <<WriteBack>> {
+    state "EJECUTA_J" as J1 : wreg=1, wpc=0
+    state "J_UPDATE" as J2 : jump=1, wpc=1
+}
+
+' Transiciones
+[*] --> INICIO : nreset=0
+INICIO --> S1
+
+' Ciclo Fetch
+S1 --> S2
+S2 --> S3
+
+' Decodificacion
+S3 --> R_TYPE : OPC_R_TYPE
+S3 --> I_TYPE : OPC_I_TYPE
+S3 --> U_TYPE : OPC_U_TYPE
+S3 --> B_TYPE : OPC_B_TYPE
+S3 --> L1 : OPC_LOAD
+S3 --> ST1 : OPC_S_TYPE
+S3 --> J1 : OPC_J_TYPE
+
+' Retornos al Fetch
+R_TYPE --> S1 : Fin Instrucción
+I_TYPE --> S1
+U_TYPE --> S1
+B_TYPE --> S1
+
+' Lógica Interna Load
+L1 --> L2
+L2 --> S1
+
+' Lógica Interna Store
+ST1 --> ST2
+ST2 --> ST3 : wmem=1
+ST3 --> S1 : PC Update
+
+' Lógica Interna Jump
+J1 --> J2
+J2 --> S1
+
+@enduml

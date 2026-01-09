@@ -36,7 +36,7 @@ architecture tb of cpu_tb is
     signal ultima_escritura_addr : std_logic_vector (31 downto 0);
     signal ultima_escritura_twidth : std_logic_vector (2 downto 0);
     signal ultima_escritura_dms : std_logic_vector (31 downto 0);
-    signal ulitma_lectura_addr : std_logic_vector (31 downto 0);
+    signal ultima_lectura_addr : std_logic_vector (31 downto 0);
     signal ultima_lectura_twidth : std_logic_vector (2 downto 0);
     signal ultima_lectura_dsm : std_logic_vector (31 downto 0);
 begin
@@ -86,7 +86,7 @@ begin
     );
 
     U_RAM : entity ram512x32 generic map (
-        archivo_init => "cpu_tb_prog.txt"
+        archivo_init => "../src/cpu_tb_prog.txt"
     ) port map (
         clk  => clk,
         we   => ram_we,
@@ -104,7 +104,7 @@ begin
             ultima_escritura_twidth <= bus_mtwidth;
             ultima_escritura_dms <= bus_mdms;
         else
-            ultima_lectura_addr <= bus_maddr_reg;
+            ultima_lectura_addr <= bus_maddr;
             ultima_lectura_twidth <= bus_mtwidth;
             wait for periodo/4;
             ultima_lectura_dsm <= bus_mdsm;

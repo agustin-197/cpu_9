@@ -7,6 +7,7 @@ entity cpu is
     port(
         clk        : in std_logic;
         nreset     : in std_logic;
+        --Bus de memoria
         bus_dsm    : in std_logic_vector (31 downto 0);
         bus_addr   : out std_logic_vector (31 downto 0);
         bus_dms    : out std_logic_vector (31 downto 0);
@@ -40,36 +41,42 @@ architecture arch of cpu is
     signal alu_fn_i : std_logic_vector (3 downto 0);
     signal alu_fn_r : std_logic_vector (3 downto 0);
     signal alu_fn_b : std_logic_vector (3 downto 0);
+    --señal auxiliar para calcular direccion de branch
+    signal branch_target : reg32_t;
     
 begin
 
     U1 : entity control_cpu port map (
-        clk => clk,
-        nreset => nreset,
+        clk         => clk,
+        nreset      => nreset,
         take_branch => take_branch,
-        op => ir(6 downto 0),
-        jump => jump,
-        s1pc => s1pc,
-        wpc => wpc,
-        wmem => wmem,
-        wreg => wreg,
-        sel_imm => sel_imm,
-        data_addr => data_addr,
-        mem_source => mem_source,
-        imm_source => imm_source,
-        winst => winst,
-        alu_mode => alu_mode,
-        imm_mode => imm_mode
+        op          => ir(6 downto 0),
+        jump        => jump,
+        s1pc        => s1pc,
+        wpc         => wpc,
+        wmem        => wmem,
+        wreg        => wreg,
+        sel_imm     => sel_imm,
+        data_addr   => data_addr,
+        mem_source  => mem_source,
+        imm_source  => imm_source,
+        winst       => winst,
+        alu_mode    => alu_mode,
+        imm_mode    => imm_mode
     );
 
+    --logica de escritura en banco de registros
     rf_addr_w <= ir(11 downto 7);
     -- x0 solo lectura
     rf_we <= wreg and (or rf_addr_w);
-    rf_din <= bus_dsm when mem_source else imm_val when imm_source else alu_y;
+    --mux de entrada de datos al registro
+    rf_din <= bus_dsm when mem_source else 
+              imm_val when imm_source else 
+              alu_y;
 
     U2 : entity rf32x32 port map (
-        clk => clk,
-        we => rf_we,
+        clk    => clk,
+        we     => rf_we,
         addr_a => ir(19 downto 15),
         addr_b => ir(24 downto 20),
         addr_w => rf_addr_w,
@@ -77,18 +84,20 @@ begin
         dout_a => rf_dout_a,
         dout_b => rf_dout_b
     );
+    --mux de entrada ALU
+    alu_a <= pc when s1pc = '1' else rf_dout_a;
+alu_b <= imm_val when sel_imm = '1' else rf_dout_b;
 
-    alu_a <= pc when s1pc else rf_dout_a;
-    alu_b <= imm_val when sel_imm else rf_dout_b;
-
-    U3 : entity alu port map (
+    U3 : entity alu 
+        generic map (W => 32)
+    port map (
         A => alu_a,
         B => alu_b,
         sel_fn => alu_fn,
         Y => alu_y,
         Z => alu_z
     );
-
+    --proceso de registros PC e IR
     registros : process (clk)
     begin
         if rising_edge(clk) then
@@ -97,13 +106,25 @@ begin
             elsif wpc then
                 pc <= pc_next;
             end if;
+
             if winst then
                 ir <= bus_dsm;
             end if;
         end if;
     end process;
 
-    pc_next <= alu_y when jump else std_logic_vector(unsigned(pc)+4);
+-- Lógica del siguiente PC
+process(all) begin
+    if nreset = '0' then
+        pc_next <= (others => '0');
+    else
+        if jump = '1' then
+            pc_next <= std_logic_vector(unsigned(pc) + unsigned(imm_val)); 
+        else 
+            pc_next <= std_logic_vector(unsigned(pc)+4); 
+        end if;
+    end if;
+end process;
 
     -- Bus del sistema
     bus_addr <= alu_y when data_addr else pc;
@@ -132,6 +153,8 @@ begin
                 alu_fn_r when "10",
                 alu_fn_b when "11",
                 "0000" when others; -- "00"
+
+    --Decodificador de funcion ALU
     alu_fn_i <= ir(14 downto 12) & (ir(30) and ir(12));
     alu_fn_r <= ir(14 downto 12) & ir(30);
     alu_fn_b <= "0" & ir(14 downto 13) & "1";

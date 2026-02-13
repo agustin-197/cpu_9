@@ -1,0 +1,25 @@
+set_io clk 94
+set_io nreset_in 31
+
+# Tablero de interruptores de 8 bits
+set_io A[7] 24
+set_io A[6] 23
+set_io A[5] 22
+set_io A[4] 21
+set_io A[3] 16
+set_io A[2] 15
+set_io A[1] 12
+set_io A[0] 11
+
+# Display de siete segmentos
+set_io y[7] 124
+set_io y[6] 134
+set_io y[5] 129
+set_io y[4] 135
+set_io y[3] 130
+set_io y[2] 128
+set_io y[1] 122
+set_io y[0] 125
+
+
+

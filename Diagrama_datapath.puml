@@ -1,0 +1,66 @@
+@startuml
+title Datapath - Arquitectura RISC-V Multiciclo
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+package "Fetch Unit" {
+    component "PC" as PC
+    component "Mux PC" as MUX_PC
+}
+
+package "Memory Unit" {
+    component "Memoria Instrucciones\ny Datos" as MEM
+    component "Instruction\nRegister (IR)" as IR
+    component "Memory Data\nRegister (MDR)" as MDR
+}
+
+package "Decode & Register" {
+    component "Control Unit" as CU
+    component "Imm Gen" as IMM
+    component "Register File\n(Banco Registros)" as RF
+}
+
+package "Execution Unit" {
+    component "ALU" as ALU
+    component "Mux A" as MUX_A
+    component "Mux B" as MUX_B
+    component "ALU Out" as ALU_OUT
+}
+
+' --- CONEXIONES ---
+
+'-------------------------
+MUX_PC --> PC : Next Addr
+PC --> MEM : Address
+MEM --> IR : Instruction
+MEM --> MDR : Data Read
+
+'-------------------------
+IR --> CU : Opcode [6:0]
+IR --> RF : rs1, rs2, rd
+IR --> IMM : imm fields
+
+'------------------------
+RF --> MUX_A : rs1 data
+RF --> MUX_B : rs2 data
+PC --> MUX_A : PC (para JAL/Branch)
+IMM --> MUX_B : Imm Value
+
+MUX_A --> ALU : Op A
+MUX_B --> ALU : Op B
+
+ALU --> ALU_OUT : Result
+ALU_OUT --> MEM : Address (Store/Load)
+ALU_OUT --> MUX_PC : Branch/Jump Target
+
+'------------------------
+MDR --> RF : Data from Mem (Load)
+ALU_OUT --> RF : ALU Result (R-Type)
+
+'------------------------
+CU ..> MUX_PC : jump/branch
+CU ..> RF : wreg
+CU ..> MEM : wmem
+CU ..> ALU : alu_control
+
+@enduml

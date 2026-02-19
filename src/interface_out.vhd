@@ -10,7 +10,7 @@ entity interface_out is
     --señales del bus conectadas a la cpu
     bus_addr       :in std_logic_vector(31 downto 0);
     bus_dms        :in std_logic_vector(31 downto 0);
-    bus_tms        :in std_logic
+    bus_tms        :in std_logic;
 
     --señales de salida del periferico
     dout     : out std_logic_vector(31 downto 0); -- Dato guardado

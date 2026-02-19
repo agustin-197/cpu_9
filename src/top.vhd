@@ -65,7 +65,7 @@ architecture arch of top is
     u_reset : entity work.reset_al_inicializar_fpga
     port map (
         clk        => clk,
-        nreset_in  => nreset_in,
+        nreset_in  => A(7),
         nreset_out => sys_nreset
     );
 

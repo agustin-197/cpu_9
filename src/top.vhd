@@ -37,7 +37,7 @@ architecture arch of top is
     signal s_tms      : std_logic;
 
     -- señales de retorno de los esclavos al crossbar
-    constant NUM_SLAVES : positive := 1;
+    constant NUM_SLAVES : positive := 2;
     signal slaves_sact  : std_logic_vector(NUM_SLAVES - 1 downto 0);
     signal slaves_dsm   : word_array(NUM_SLAVES - 1 downto 0);
    
@@ -51,11 +51,15 @@ architecture arch of top is
     signal phys_ram_addr : std_logic_vector(8 downto 0); 
     signal phys_ram_din  : std_logic_vector(31 downto 0);
     signal phys_ram_dout : std_logic_vector(31 downto 0);
+
+    -- señales internas para el periferico de salida
+    signal out_dout      : std_logic_vector(31 downto 0);
+    signal out_sact      : std_logic;
     
     begin
 
-    -- Ver los LEDs cambiar cuando la CPU avance instrucciones.
-    y <= m_addr(7 downto 0);
+    -- conectar la salida del periferico a los LEDs.
+    y <= out_dout(7 downto 0);
 
 
     u_reset : entity work.reset_al_inicializar_fpga
@@ -98,10 +102,16 @@ architecture arch of top is
         bus_sdsm    => slaves_dsm
     );
 
+        -- mapeo de respuestas de los esclavos hacia el crossbar
+        --esclavo 0: controlador de ram
         slaves_sact(0) <= ram_ctrl_sact;
         slaves_dsm(0)  <= ram_ctrl_dsm;
 
-        u_ram_ctrl : entity work.ram_controller
+        --esclavo 1: periferico de salida
+        slaves_sact(1) <= out_sact;
+        slaves_dsm(1)  <= (others => '0');
+
+    u_ram_ctrl : entity work.ram_controller
     generic map (
         ram_addr_nbits => 9,          
         ram_base       => x"00000000" 
@@ -139,5 +149,22 @@ architecture arch of top is
         din  => phys_ram_din,
         dout => phys_ram_dout
     );
+
+    u_interface_out : entity work.interface_out
+    port map(
+        clk      => clk,
+        nreset   => sys_nreset,
+        
+        bus_addr => s_addr_bus,
+        bus_dms  => s_dms_bus,
+        bus_tms  => s_tms,
+        
+        dout     => out_dout,
+        escribir => open,
+        bus_sact => out_sact
+
+    );
+
+
 end arch; 
 

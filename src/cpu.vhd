@@ -22,7 +22,7 @@ architecture arch of cpu is
     signal pc,pc_next : reg32_t; -- Contador de programa
     signal ir : reg32_t; -- Registro de instrucción
     -- Unidad de control
-    signal jump, s1pc, wpc, wmem, wreg, sel_imm : std_logic;
+    signal jump, s1pc, wpc, wmem, wreg, sel_imm, jalr_jump : std_logic;
     signal data_addr, mem_source, imm_source, winst : std_logic;
     signal alu_mode : std_logic_vector (1 downto 0);
     signal imm_mode : std_logic_vector (2 downto 0);
@@ -52,6 +52,7 @@ begin
         take_branch => take_branch,
         op          => ir(6 downto 0),
         jump        => jump,
+        jalr_jump   => jalr_jump,
         s1pc        => s1pc,
         wpc         => wpc,
         wmem        => wmem,
@@ -118,7 +119,9 @@ process(all) begin
     if nreset = '0' then
         pc_next <= (others => '0');
     else
-        if jump = '1' then
+        if jalr_jump = '1' then
+            pc_next <= alu_y(31 downto 1) & '0';
+        elsif jump = '1' then
             pc_next <= std_logic_vector(unsigned(pc) + unsigned(imm_val)); 
         else 
             pc_next <= std_logic_vector(unsigned(pc)+4); 

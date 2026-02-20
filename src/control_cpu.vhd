@@ -9,6 +9,7 @@ entity control_cpu is
         take_branch: in  std_logic;
         op         : in  std_logic_vector (6 downto 0);
         jump       : out std_logic;
+        jalr_jump  : out std_logic;
         s1pc       : out std_logic;
         wpc        : out std_logic;
         wmem       : out std_logic;
@@ -29,7 +30,8 @@ architecture arch of control_cpu is
                      EJECUTA_I,
                      CALC_DIR_STORE, ESCRIBE_MEM,STORE_UPDATE,
                      BRANCH_EVAL, EJECUTA_U,
-                     EJECUTA_J, J_UPDATE);
+                     EJECUTA_J, J_UPDATE,
+                     EJECUTA_AUIPC, EJECUTA_JALR, JALR_UPDATE);
     signal estado_sig, estado : estado_t;
 
     subtype imm_mode_t is std_logic_vector (2 downto 0);
@@ -41,13 +43,15 @@ architecture arch of control_cpu is
     constant IMM_J : imm_mode_t := "101";
 
     -- Constantes de OPCODE
-    constant OPC_LOAD   :std_logic_vector(6 downto 0) := "0000011";
-    constant OPC_R_TYPE :std_logic_vector(6 downto 0) := "0110011";
-    constant OPC_I_TYPE :std_logic_vector(6 downto 0) := "0010011";
-    constant OPC_S_TYPE :std_logic_vector(6 downto 0) := "0100011";
-    constant OPC_B_TYPE :std_logic_vector(6 downto 0) := "1100011";
-    constant OPC_U_TYPE :std_logic_vector(6 downto 0) := "0110111";
-    constant OPC_J_TYPE :std_logic_vector(6 downto 0) := "1101111";
+    constant OPC_LOAD        :std_logic_vector(6 downto 0) := "0000011";
+    constant OPC_IMM         :std_logic_vector(6 downto 0) := "0010011";
+    constant OPC_ARITMETICAS :std_logic_vector(6 downto 0) := "0110011";
+    constant OPC_JALR        :std_logic_vector(6 downto 0) := "1100111";
+    constant OPC_STORE       :std_logic_vector(6 downto 0) := "0100011";
+    constant OPC_BRANCH      :std_logic_vector(6 downto 0) := "1100011";
+    constant OPC_LUI         :std_logic_vector(6 downto 0) := "0110111";
+    constant OPC_AUIPC       :std_logic_vector(6 downto 0) := "0010111";
+    constant OPC_JUMP        :std_logic_vector(6 downto 0) := "1101111";
 
 begin
 
@@ -82,27 +86,33 @@ begin
                         estado_sig <= LEE_MEM_DAT_INC_PC;
 
                     --Instruccion tipo R
-                    when OPC_R_TYPE => 
+                    when OPC_ARITMETICAS => 
                         estado_sig <= EJECUTA_R;
 
                     --Instrucciones tipo I
-                    when OPC_I_TYPE =>
+                    when OPC_IMM =>
                         estado_sig <= EJECUTA_I;
+                    
+                    when OPC_JALR =>
+                        estado_sig <= EJECUTA_JALR;
                    
                     --Instruciones tipo S
-                    when OPC_S_TYPE =>
+                    when OPC_STORE =>
                         estado_sig <= CALC_DIR_STORE;
                     
                     --TIPO B
-                    when OPC_B_TYPE =>
+                    when OPC_BRANCH =>
                         estado_sig <= BRANCH_EVAL;
 
                     --TIPO U
-                    when OPC_U_TYPE =>
+                    when OPC_LUI =>
                         estado_sig <= EJECUTA_U;
+                    
+                    when OPC_AUIPC =>
+                        estado_sig <= EJECUTA_AUIPC;
 
                     --TIPO J
-                    when OPC_J_TYPE =>
+                    when OPC_JUMP =>
                         estado_sig <= EJECUTA_J;
 
                     --OTRO CASO
@@ -122,6 +132,12 @@ begin
             when EJECUTA_I =>
                     estado_sig <= LEE_MEM_PC;
 
+            when EJECUTA_JALR =>
+                    estado_sig <= JALR_UPDATE;
+            
+            when JALR_UPDATE =>
+                    estado_sig <= LEE_MEM_PC;
+
             --TIPO S
             when CALC_DIR_STORE =>
                     estado_sig <= ESCRIBE_MEM;
@@ -138,6 +154,9 @@ begin
 
             --TIPO U
             when EJECUTA_U =>
+                    estado_sig <= LEE_MEM_PC;
+            
+            when EJECUTA_AUIPC =>
                     estado_sig <= LEE_MEM_PC;
 
             --TIPO J
@@ -160,6 +179,7 @@ begin
         winst <= '0';
         wreg <= '0';
         jump <= '0';
+        jalr_jump <= '0';
         s1pc <= '0';
         alu_mode <= "00";
         imm_mode <= IMM_CONST_4;
@@ -202,6 +222,22 @@ begin
                 imm_mode <= IMM_I;
                 wreg <= '1';
                 wpc <= '1';
+
+            when EJECUTA_JALR =>
+                s1pc <= '1';       
+                sel_imm <= '1';    
+                imm_mode <= IMM_CONST_4;
+                alu_mode <= "00";  
+                wreg <= '1';       
+                wpc <= '0';        
+
+            when JALR_UPDATE =>
+             imm_mode <= IMM_I; 
+             s1pc <= '0';       
+             sel_imm <= '1';    
+             alu_mode <= "00";  
+             jalr_jump <= '1';  
+             wpc <= '1';
                 
             --TIPO S
             when CALC_DIR_STORE =>
@@ -237,6 +273,14 @@ begin
                 imm_mode <= IMM_U;
                 wreg <= '1';
                 wpc <= '1';
+
+            when EJECUTA_AUIPC =>
+                s1pc <= '1';       
+                sel_imm <= '1';    
+                imm_mode <= IMM_U;
+                alu_mode <= "00";  
+                wreg <= '1';       
+                wpc <= '1';        
 
             --TIPO J
             when EJECUTA_J =>

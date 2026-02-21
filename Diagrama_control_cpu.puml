@@ -16,10 +16,11 @@ state "Ciclo de Búsqueda (Fetch)" as FETCH <<Fetch>> {
     state "DECODIFICA" as S3
 }
 
-' Ramas de Ejecución
+' Ramas de Ejecución Simple
 state "EJECUTA_R" as R_TYPE <<Execute>>
 state "EJECUTA_I" as I_TYPE <<Execute>>
-state "EJECUTA_U" as U_TYPE <<Execute>>
+state "EJECUTA_U (LUI)" as U_TYPE <<Execute>>
+state "EJECUTA_AUIPC" as AUIPC_TYPE <<Execute>>
 state "BRANCH_EVAL" as B_TYPE <<Execute>>
 
 ' Secuencia LOAD
@@ -35,10 +36,16 @@ state "Secuencia STORE" as STORE_SEQ <<Memory>> {
     state "STORE_UPDATE" as ST3
 }
 
-' Secuencia JUMP
-state "Secuencia JUMP" as JUMP_SEQ <<WriteBack>> {
+' Secuencia JUMP (JAL)
+state "Secuencia JUMP (JAL)" as JUMP_SEQ <<WriteBack>> {
     state "EJECUTA_J" as J1 : wreg=1, wpc=0
     state "J_UPDATE" as J2 : jump=1, wpc=1
+}
+
+' Secuencia JALR 
+state "Secuencia JALR" as JALR_SEQ <<WriteBack>> {
+    state "EJECUTA_JALR" as JR1 : wreg=1, wpc=0
+    state "JALR_UPDATE" as JR2 : jalr_jump=1, wpc=1
 }
 
 ' Transiciones
@@ -49,19 +56,23 @@ INICIO --> S1
 S1 --> S2
 S2 --> S3
 
-' Decodificacion
-S3 --> R_TYPE : OPC_R_TYPE
-S3 --> I_TYPE : OPC_I_TYPE
-S3 --> U_TYPE : OPC_U_TYPE
-S3 --> B_TYPE : OPC_B_TYPE
+' Decodificacion 
+S3 --> R_TYPE : OPC_ARITMETICAS
+S3 --> I_TYPE : OPC_IMM
+S3 --> U_TYPE : OPC_LUI
+S3 --> AUIPC_TYPE : OPC_AUIPC
+S3 --> B_TYPE : OPC_BRANCH
 S3 --> L1 : OPC_LOAD
-S3 --> ST1 : OPC_S_TYPE
-S3 --> J1 : OPC_J_TYPE
+S3 --> ST1 : OPC_STORE
+S3 --> J1 : OPC_JUMP
+S3 --> JR1 : OPC_JALR
+S3 --> INICIO : others
 
 ' Retornos al Fetch
 R_TYPE --> S1 : Fin Instrucción
 I_TYPE --> S1
 U_TYPE --> S1
+AUIPC_TYPE --> S1
 B_TYPE --> S1
 
 ' Lógica Interna Load
@@ -73,8 +84,12 @@ ST1 --> ST2
 ST2 --> ST3 : wmem=1
 ST3 --> S1 : PC Update
 
-' Lógica Interna Jump
+' Lógica Interna Jump (JAL)
 J1 --> J2
 J2 --> S1
+
+' Lógica Interna JALR
+JR1 --> JR2
+JR2 --> S1
 
 @enduml
